@@ -1,0 +1,87 @@
+---
+title: "Exploratory data analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+First of all we have to clean and format the data.
+
+```{r}
+
+
+
+us_customer_sample <- US_customers[c(10:21),c(1:14)]
+#format dates
+us_customer_sample$Date.Sold<-gsub("-","/",us_customer_sample$Date.Sold)
+us_customer_sample$Date.Sold <- as.Date(us_customer_sample$Date.Sold, format = "%m/%d/%y")
+#filtering by date
+from_date="2014/01/01"
+to_date="2014/12/01"
+us_customer_sample[ (us_customer_sample$Date.Sold >= "2014/01/01" & us_customer_sample$Date.Sold <= "2014/12/01")  , ]
+#alternate filteR
+#filter(us_customer_sample, Date.Sold >= "2014/01/01", Date.Sold <= "2014/12/01")
+
+```
+
+merkes account#11640865
+
+How many dealers did we have each year by contract?
+
+```{r}
+data_frame=US_customers
+
+#format dates
+data_frame$Date.Sold<-gsub("-","/",data_frame$Date.Sold)
+data_frame$Date.Sold <- as.Date(data_frame$Date.Sold, format = "%m/%d/%y")
+
+from_date="2014/01/01"
+to_date="2014/12/31"
+
+#How many sales were made by each contract group within given timeframe?
+summary(data_frame[ (data_frame$Date.Sold >= from_date & data_frame$Date.Sold <= to_date )  , ]$Description)
+
+#extract  all sales made in given timeframe.
+customers_in_timeframe<-data_frame[ (data_frame$Date.Sold >= from_date & data_frame$Date.Sold <= to_date )  , ]
+
+# 116xxxx  First Year
+dealer_description_table=unique(data.frame(customers_in_timeframe$Dealer.Account.Number,customers_in_timeframe$Description))
+
+#How many customers each dealer had
+#table(customers_in_timeframe$Dealer.Account.Number)
+
+# how many sales were made by contract type?
+sales_by_contract<-table(customers_in_timeframe$Description)
+
+
+#how many dealers did we have by contract year
+dealers_by_contract<-table(dealer_description_table$customers_in_timeframe.Description)
+
+
+library(gridExtra)
+sales_by_contract_plot<-barplot(sales_by_contract,ylab ="Sales by contract")
+dealers_by_contract_plot<-barplot(dealers_by_contract,ylab = "Dealers by contract")
+
+win.metafile("sales_by_contract_plot.wmf")
+print(sales_by_contract_plot)
+dev.off()
+
+
+grid.arrange(grobTree(sales_by_contract_plot),grobTree(dealers_by_contract_plot) , nrow=2)
+
+```
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
