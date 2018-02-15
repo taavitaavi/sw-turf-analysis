@@ -30,17 +30,255 @@ us_customer_sample[ (us_customer_sample$Date.Sold >= "2014/01/01" & us_customer_
 
 merkes account#11640865
 
-How many dealers did we have each year by contract?
+setup
 
 ```{r}
+library(lubridate)
+library(dplyr)
+library(lattice)
 data_frame=US_customers
+
+
 
 #format dates
 data_frame$Date.Sold<-gsub("-","/",data_frame$Date.Sold)
 data_frame$Date.Sold <- as.Date(data_frame$Date.Sold, format = "%m/%d/%y")
+data_frame["Year"]=year(as.Date(data_frame$Date.Sold))
 
+```
+
+
+The number of customers over the years.
+```{r}
+#filter out years 2014-2017
+years_considered <- c("2014", "2015", "2016", "2017")
+data_frame=filter(data_frame, Year %in% years_considered) 
+
+#Number of customers over the years
+table(year(as.Date(data_frame$Date.Sold)))
+```
+
+Customers in 2014
+```{r}
+
+#customers in 2014
+
+barchart(Date.Sold~Description,data=data_frame,groups=Year,scales=list(x=list(rot=90,cex=0.8)))
+
+```
+
+```{r}
+#how many sales have been made over the years by different contract groups
+
+data.m <- melt(data_frame, id=c("ï..CustomerId","City","State","Dealer.Account.Number","Year", "Description"),measure.vars = c("Description"))
+
+no_sales_by_contract_group <- cast(data.m, Year+Description~variable,length)
+colnames(no_sales_by_contract_group)[3] <- "no.of.sales"
+
+
+
+#how many sales each dealer made by year and contract group
+data.m <- melt(data_frame, id=c("ï..CustomerId","City","State","Dealer.Account.Number","Year", "Description"),measure.vars = c("Dealer.Account.Number"))
+
+data.c <- cast(data.m, Year+Description+Dealer.Account.Number~variable,length)
+
+
+#how many units did each dealer deliver by year and contract group
+
+data.m <- melt(data_frame, id=c("ï..CustomerId","City","State","Dealer.Account.Number","Year", "Description"),measure.vars = c("Units"))
+
+data.c <- cast(data.m, Year+Description+Dealer.Account.Number~variable,sum)
+
+g<- ggplot(data.c,aes(Year))
+ g + geom_bar(aes(fill=Description), width = 0.5) + 
+    theme(axis.text.x = element_text(angle=65, vjust=0.6)) +
+    labs(title="Categorywise Bar Chart", 
+         subtitle="Manufacturer of vehicles", 
+         caption="Source: Manufacturers from 'mpg' dataset")
+#how many dealers have we had over the years in different contract groups
+
+data.m <- melt(data_frame, id=c("ï..CustomerId","City","State","Dealer.Account.Number","Year", "Description"),measure.vars = c("Dealer.Account.Number"))
+
+data.c <- cast(data.m, Year+Description+Dealer.Account.Number~variable,length)
+
+a<-as.data.frame(data.c[,c(1,2,3)])
+
+data.m <- melt(a, id=c("Year", "Description"),measure.vars = c("Dealer.Account.Number"))
+no_of_dealers_by_contract_group<- cast(data.m, Year+Description~variable,length)
+colnames(no_of_dealers_by_contract_group)[3] <- "no.of.dealers"
+
+
+# pie chart of number of dealers in  year
+
+year = 2016
+par(mfrow = c(2,2))
+for (year in c(2014,2015,2016,2017)){
+  
+  slices <-no_of_dealers_by_contract_group$no.of.dealers[no_of_dealers_by_contract_group$Year==year] 
+lbls <-no_of_dealers_by_contract_group$Description[no_of_dealers_by_contract_group$Year==year] 
+pct <- round(slices/sum(slices)*100)
+lbls <- paste(lbls, pct) # add percents to labels 
+lbls <- paste(lbls,"%",sep="") # ad % to labels 
+pie(slices,labels = lbls, col=rainbow(length(lbls)),
+  	main=paste("Dealers by contract group",year))
+  
+}
+
+
+
+```
+
+pie chart of #dealers by contract group
+````{r}
+par(mfrow = c(2,2))
+for (year in c(2014,2015,2016,2017)){
+  
+  slices <-no_sales_by_contract_group$no.of.sales[no_sales_by_contract_group$Year==year] 
+lbls <-no_sales_by_contract_group$Description[no_sales_by_contract_group$Year==year] 
+pct <- round(slices/sum(slices)*100)
+lbls <- paste(lbls, pct) # add percents to labels 
+lbls <- paste(lbls,"%",sep="") # ad % to labels 
+pie(slices,labels = lbls, col=rainbow(length(lbls)),
+  	main=paste("Sales by contract group",year))
+  
+}
+
+````
+
+
+
+
+Pie chart of how many of the units were sold by contract group
+```{r}
+
+#first let\s find no of units by contract group
+
+data.m <- melt(data_frame, id=c("ï..CustomerId","City","State","Dealer.Account.Number","Year", "Description"),measure.vars = c("Units"))
+
+no_of_units_by_contract_group <- cast(data.m, Year+Description~variable,sum)
+#colnames(no_of_units_by_contract_group)[3] <- "no.of.units"
+
+
+par(mfrow = c(2,2))
+for (year in c(2014,2015,2016,2017)){
+  
+  slices <-no_of_units_by_contract_group$Units[no_of_units_by_contract_group$Year==year] 
+lbls <-no_of_units_by_contract_group$Description[no_of_units_by_contract_group$Year==year] 
+pct <- round(slices/sum(slices)*100)
+lbls <- paste(lbls, pct) # add percents to labels 
+lbls <- paste(lbls,"%",sep="") # ad % to labels 
+pie(slices,labels = lbls, col=rainbow(length(lbls)),
+  	main=paste("Units by contract group",year))
+}
+
+#put everything together
+units_sales_dealers_by_year<-no_of_dealers_by_contract_group
+units_sales_dealers_by_year$Units<-no_of_units_by_contract_group$Units
+units_sales_dealers_by_year$no.of.sales<-no_sales_by_contract_group$no.of.sales
+units_sales_dealers_by_year$Average.Units<-units_sales_dealers_by_year$Units/units_sales_dealers_by_year$no.of.dealers
+units_sales_dealers_by_year$Average.Package<-units_sales_dealers_by_year$Units/units_sales_dealers_by_year$no.of.sales
+
+# replace first with 1st, second with 2nd etc.
+units_sales_dealers_by_year$Description <- gsub('First', '1st', units_sales_dealers_by_year$Description)
+units_sales_dealers_by_year$Description <- gsub('Second', '2nd', units_sales_dealers_by_year$Description)
+units_sales_dealers_by_year$Description <- gsub('Third', '3rd', units_sales_dealers_by_year$Description)
+units_sales_dealers_by_year$Description <- gsub('Fourth', '4th', units_sales_dealers_by_year$Description)
+units_sales_dealers_by_year$Description <- gsub('Fifth', '5th', units_sales_dealers_by_year$Description)
+units_sales_dealers_by_year$Description <- gsub('Sixth', '6th', units_sales_dealers_by_year$Description)
+units_sales_dealers_by_year$Description <- gsub('Seventh', '7th', units_sales_dealers_by_year$Description)
+units_sales_dealers_by_year$Description <- gsub('Eighth', '8th', units_sales_dealers_by_year$Description)
+units_sales_dealers_by_year$Description <- gsub('Ninth', '9th', units_sales_dealers_by_year$Description)
+
+```
+
+Which of the contract groups has the highest average units
+```{r}
+
+ggplot(units_sales_dealers_by_year, aes(Year, Average.Units, fill = Description)) + 
+  geom_bar(stat="identity", position = "dodge") + 
+  scale_fill_brewer(palette = "Paired")
+
+
+```
+Which of the contract groups has the highest average package
+```{r}
+
+ggplot(units_sales_dealers_by_year, aes(Year, Average.Package, fill = Description)) + 
+  geom_bar(stat="identity", position = "dodge") + 
+  scale_fill_brewer(palette = "Paired")
+
+
+```
+Total units by years
+
+```{r}
+data.m <- melt(data_frame, id=c("ï..CustomerId","City","State","Dealer.Account.Number","Year", "Description"),measure.vars = c("Units"))
+
+total_units_by_year <- cast(data.m, Year~variable,sum)
+
+ggplot(total_units_by_year, aes(x=Year)) + 
+  geom_line(aes(y=Units)) + 
+  labs(title="Units sold by year", 
+       subtitle="Returns Percentage from 'Economics' Dataset", 
+       caption="Source: Southwestern Advantage", 
+       y="Yearly units")
+
+
+```
+Let's look at production weekly by year and by contract groups
+```{r}
+
+data.m <- melt(data_frame, id=c("ï..CustomerId","City","State","Dealer.Account.Number","Year", "Description","Week.Sold"),measure.vars = c("Units"))
+units_by_week <- cast(data.m, Year+Week.Sold+Description~variable,sum)
+units_by_week_by_dealer <- cast(data.m, Year+Week.Sold+Description+Dealer.Account.Number~variable,sum)
+sales_by_week_by_contract<-cast(data.m, Year+Week.Sold+Description~variable,length)
+colnames(sales_by_week_by_contract)[4] <- "no.of.customers"
+
+data.m<-melt(units_by_week_by_dealer, id=c("Year","Description","Week.Sold" ),measure.vars = c("Units"))
+no_of_dealers_selling_weekly_by_contract= cast(data.m, Year+Week.Sold+Description~variable,length)
+units_sold_by_week_by_contract_group<-cast(data.m, Year+Week.Sold+Description~variable,sum)
+units_sold_by_week_by_contract_group$no.of.Dealers.selling<-no_of_dealers_selling_weekly_by_contract$Units
+units_sold_by_week_by_contract_group$Average.Weekly.Units<-units_sold_by_week_by_contract_group$Units/units_sold_by_week_by_contract_group$no.of.Dealers.selling
+units_sold_by_week_by_contract_group$no.of.Customers<-sales_by_week_by_contract$no.of.customers
+units_sold_by_week_by_contract_group$Average.Package<-units_sold_by_week_by_contract_group$Units/units_sold_by_week_by_contract_group$no.of.Customers
+
+
+year=2016
+units_sold_by_week_by_contract_group<-numerical.description(units_sold_by_week_by_contract_group)
+
+
+ggplot(data = subset(units_sold_by_week_by_contract_group, Year==year & Week.Sold>21 & Week.Sold<36 ), aes(x = Week.Sold, y = Average.Weekly.Units, group = Description)) +
+    xlab("Week number") + ylab("Average Weekly Units") +
+    geom_line(aes(color = Description),size=1.5)+scale_colour_brewer( palette="Paired")
+
+
+
+#plotting
+par(mfrow = c(2,2))
+for (year in c(2014,2015,2016,2017)){
+  ggplot(data = subset(units_sold_by_week_by_contract_group, Year==year & Week.Sold>21 & Week.Sold<36 ), aes(x = Week.Sold, y = Average.Weekly.Units, group = Description)) +
+    xlab("Week number") + ylab(paste("Average Weekly Units",year)) +
+    geom_line(aes(color = Description),size=1.5)+scale_colour_brewer( palette="Paired")
+  
+}
+
+
+```
+## Including Plots
+
+
+
+
+
+
+
+
+```{r}
 from_date="2014/01/01"
 to_date="2014/12/31"
+
+# just subset by year
+#yearfourteen<-subset(data_frame, format(as.Date(Date.Sold),"%Y")==2014)
 
 #How many sales were made by each contract group within given timeframe?
 summary(data_frame[ (data_frame$Date.Sold >= from_date & data_frame$Date.Sold <= to_date )  , ]$Description)
@@ -63,21 +301,19 @@ dealers_by_contract<-table(dealer_description_table$customers_in_timeframe.Descr
 
 
 library(gridExtra)
-sales_by_contract_plot<-barplot(sales_by_contract,ylab ="Sales by contract")
-dealers_by_contract_plot<-barplot(dealers_by_contract,ylab = "Dealers by contract")
+par(mfrow= c(1,2))
+barplot(sales_by_contract,ylab ="Sales by contract", las=2)
+barplot(dealers_by_contract,ylab = "Dealers by contract",las=2 )
 
-win.metafile("sales_by_contract_plot.wmf")
-print(sales_by_contract_plot)
+#png(file="sales_by_contract.png",width=1024, height=600)
+
+#barplot(sales_by_contract,ylab ="Sales by contract",las = 2)
 dev.off()
 
 
 grid.arrange(grobTree(sales_by_contract_plot),grobTree(dealers_by_contract_plot) , nrow=2)
 
 ```
-
-
-## Including Plots
-
 You can also embed plots, for example:
 
 ```{r pressure, echo=FALSE}

@@ -31,19 +31,23 @@ all_customers$Census.Block[1]<-censusblock
 nrow(US_customers)
 ```{r}
 library(jsonlite)
+succesful_geocodes_since_start=0
 for(i in 1:length(US_customers$Census.Block)){
   errorCondition=0;
   while (errorCondition==0)
     errorCondition=1
-  tryCatch({
-   
-
-    if(is.na(US_customers$Census.Block[i])){
-      
-         if(i%%1000==0){
+  
+   if(i%%1000==0 && succesful_geocodes_since_start>0){
             message("Saving environment to file ...")
             save.image(file='Environment.RData')
+            succesful_geocodes_since_start=0
           }
+  tryCatch({
+    
+
+    if(is.na(US_customers$Census.Block[i])){
+       
+        
         message("geocoding address #",i, " ", US_customers$Address[i], ', ',US_customers$City[i], ', ',US_customers$State[i] )
       
         query=gsub(" ","",paste("https://geocoding.geo.census.gov/geocoder/geographies/address?street=",gsub(" ","+", US_customers$Address[i],fixed = TRUE),"&city=",gsub(" ","+", US_customers$City[i],fixed = TRUE),"&state=",gsub(" ","+", US_customers$State[i],fixed = TRUE),"&benchmark=Public_AR_Census2010&vintage=Census2010_Census2010&layers=14&format=json"))
@@ -56,6 +60,7 @@ for(i in 1:length(US_customers$Census.Block)){
         }
         else{
           US_customers$Census.Block[i]<-censusblock
+          succesful_geocodes_since_start=succesful_geocodes_since_start+1
         }
         
         message("census block is, ", censusblock)
